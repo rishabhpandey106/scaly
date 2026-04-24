@@ -7,38 +7,31 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
+
+	"url-shortener/config"
+	"url-shortener/handler"
+	"url-shortener/repository"
+	"url-shortener/service"
 )
 
 func main() {
-	err := godotenv.Load()
+
+	godotenv.Load()
+
+	db, err := config.ConnectDB(os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatal("env file not loaded")
+		log.Fatal(err)
 	}
 
-	db, err := ConnectDB(os.Getenv("DATABASE_URL"))
-	if err != nil {
-		panic(err)
-	}
-
-	if db == nil {
-		panic("DB is nil")
-	}
-
-	err = CreateTable(db)
-	if err != nil {
-		panic(err)
-	}
+	repo := repository.NewURLRepo(db)
+	svc := service.NewURLService(repo)
+	h := handler.NewURLHandler(svc)
 
 	app := fiber.New()
 	app.Use(logger.New())
 
-	app.Use(func(c *fiber.Ctx) error {
-		c.Locals("db", db)
-		return c.Next()
-	})
-
-	app.Post("/shorten", ShortenHandler)
-	app.Get("/:code", RedirectHandler)
+	app.Post("/shorten", h.Shorten)
+	app.Get("/:code", h.Redirect)
 
 	log.Fatal(app.Listen(":8000"))
 }
