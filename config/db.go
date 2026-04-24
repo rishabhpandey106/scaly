@@ -40,25 +40,9 @@ func CreateTable(db *pgxpool.Pool) error {
 	CREATE INDEX IF NOT EXISTS idx_urls_short_code ON urls(short_code);
 	`
 	_, err := db.Exec(context.Background(), query)
-	return err
-}
-
-func SaveURL(db *pgxpool.Pool, shortCode, longURL string) error {
-	query := `
-	INSERT INTO urls (short_code, long_url)
-	VALUES ($1, $2)
-	ON CONFLICT (short_code) DO UPDATE SET long_url = EXCLUDED.long_url
-	`
-	_, err := db.Exec(context.Background(), query, shortCode, longURL)
-	return err
-}
-
-func GetURL(db *pgxpool.Pool, shortCode string) (string, error) {
-	var longURL string
-	query := `SELECT long_url FROM urls WHERE short_code = $1`
-	err := db.QueryRow(context.Background(), query, shortCode).Scan(&longURL)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return longURL, nil
+
+	return nil
 }

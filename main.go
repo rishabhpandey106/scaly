@@ -23,6 +23,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = config.CreateTable(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// log.Println("Database ready")
+
 	repo := repository.NewURLRepo(db)
 	svc := service.NewURLService(repo)
 	h := handler.NewURLHandler(svc)
