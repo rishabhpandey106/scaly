@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,16 +22,16 @@ func StartClickSync(rdb *redis.Client, repo Repo) {
 
 			for _, key := range keys {
 
-				val, _ := rdb.Get(ctx, key).Result()
-				clicks, _ := strconv.Atoi(val)
+				val, _ := rdb.Get(ctx, key).Int()
 
-				parts := strings.Split(key, ":")
-				code := parts[1]
+				if val > 0 {
+					parts := strings.Split(key, ":")
+					code := parts[1]
 
-				repo.UpdateClicks(code, clicks)
+					repo.UpdateClicks(code, val)
 
-				// reset counter after sync
-				rdb.Del(ctx, key)
+					rdb.Del(ctx, key)
+				}
 			}
 
 			time.Sleep(10 * time.Second)

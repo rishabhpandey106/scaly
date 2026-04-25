@@ -75,5 +75,10 @@ func (s *URLService) GetURL(code string) (string, error) {
 		ttl = 1 * time.Hour
 	}
 	s.Cache.Set(ctx, key, url, ttl)
+
+	s.Cache.SetArgs(ctx, clickKey, 0, redis.SetArgs{
+		Mode: "NX",
+	})
+	s.Cache.Incr(ctx, clickKey)
 	return url, nil
 }
