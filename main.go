@@ -46,6 +46,7 @@ func main() {
 
 	app.Post("/shorten", h.Shorten)
 	app.Get("/:code", h.Redirect)
+	app.Get("/alias/check/:code", h.CheckAlias)
 
 	log.Fatal(app.Listen(":8000"))
 }

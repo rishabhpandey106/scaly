@@ -82,3 +82,17 @@ func (s *URLService) GetURL(code string) (string, error) {
 	s.Cache.Incr(ctx, clickKey)
 	return url, nil
 }
+
+func (s *URLService) CheckAlias(code string) (bool, error) {
+
+	val, err := s.Repo.Get(code)
+	if err != nil {
+		return false, nil // not found - available
+	}
+
+	if val == "" {
+		return false, nil
+	}
+
+	return true, nil // exists - not available
+}

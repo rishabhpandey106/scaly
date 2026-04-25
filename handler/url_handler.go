@@ -8,12 +8,14 @@ type URLHandler struct {
 	Service interface {
 		CreateURL(string) (string, error)
 		GetURL(string) (string, error)
+		CheckAlias(string) (bool, error)
 	}
 }
 
 func NewURLHandler(svc interface {
 	CreateURL(string) (string, error)
 	GetURL(string) (string, error)
+	CheckAlias(string) (bool, error)
 }) *URLHandler {
 	return &URLHandler{Service: svc}
 }
@@ -47,4 +49,18 @@ func (h *URLHandler) Redirect(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect(url, 302)
+}
+
+func (h *URLHandler) CheckAlias(c *fiber.Ctx) error {
+
+	code := c.Params("code")
+
+	exists, err := h.Service.CheckAlias(code)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "server error"})
+	}
+
+	return c.JSON(fiber.Map{
+		"available": !exists,
+	})
 }
