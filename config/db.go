@@ -34,6 +34,7 @@ func CreateTable(db *pgxpool.Pool) error {
 		id SERIAL PRIMARY KEY,
 		short_code TEXT UNIQUE NOT NULL,
 		long_url TEXT NOT NULL,
+		clicks INT DEFAULT 0,
 		created_at TIMESTAMP DEFAULT NOW(),
 		expiry TIMESTAMP NULL
 	);

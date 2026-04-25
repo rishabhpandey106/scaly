@@ -32,3 +32,27 @@ func (r *URLRepo) Get(shortCode string) (string, error) {
 
 	return url, err
 }
+
+func (r *URLRepo) GetWithClicks(code string) (string, int, error) {
+	var url string
+	var clicks int
+
+	query := `SELECT long_url, clicks FROM urls WHERE short_code=$1`
+
+	err := r.DB.QueryRow(context.Background(), query, code).Scan(&url, &clicks)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return url, clicks, nil
+}
+
+func (r *URLRepo) IncrementClicks(code string) {
+	query := `UPDATE urls SET clicks = clicks + 1 WHERE short_code=$1`
+	r.DB.Exec(context.Background(), query, code)
+}
+
+func (r *URLRepo) UpdateClicks(code string, clicks int) {
+	query := `UPDATE urls SET clicks = clicks + $1 WHERE short_code=$2`
+	r.DB.Exec(context.Background(), query, clicks, code)
+}

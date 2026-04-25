@@ -10,8 +10,10 @@ import (
 
 	"url-shortener/config"
 	"url-shortener/handler"
+	"url-shortener/middleware"
 	"url-shortener/repository"
 	"url-shortener/service"
+	"url-shortener/worker"
 )
 
 func main() {
@@ -28,12 +30,18 @@ func main() {
 		log.Fatal(err)
 	}
 	// log.Println("Database ready")
+	redisClient := config.InitRedis(os.Getenv("REDIS_URL"))
 
 	repo := repository.NewURLRepo(db)
-	svc := service.NewURLService(repo)
+	svc := service.NewURLService(repo, redisClient)
 	h := handler.NewURLHandler(svc)
 
+	worker.StartClickSync(redisClient, repo)
+
 	app := fiber.New()
+
+	app.Use(middleware.RateLimiter(redisClient))
+
 	app.Use(logger.New())
 
 	app.Post("/shorten", h.Shorten)
