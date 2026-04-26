@@ -35,8 +35,8 @@ func CreateTable(db *pgxpool.Pool) error {
 		short_code TEXT UNIQUE NOT NULL,
 		long_url TEXT NOT NULL,
 		clicks INT DEFAULT 0,
-		created_at TIMESTAMP DEFAULT NOW(),
-		expiry TIMESTAMP NULL
+		created_at TIMESTAMPTZ DEFAULT NOW(),
+		expiry TIMESTAMPTZ NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_urls_short_code ON urls(short_code);
 	`

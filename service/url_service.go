@@ -2,54 +2,36 @@ package service
 
 import (
 	"context"
-	"math/rand"
+	"errors"
+	"log"
+	"strings"
 	"time"
+	"url-shortener/utils"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type URLService struct {
 	Repo interface {
-		Save(string, string) error
+		Save(string, string, *time.Time) error
 		Get(string) (string, error)
-		GetWithClicks(string) (string, int, error)
+		GetWithClicks(string) (string, int, *time.Time, error)
 		IncrementClicks(string)
 		UpdateClicks(string, int)
 	}
 	Cache *redis.Client
 }
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 var ctx = context.Background()
 
-func generateCode(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
 func NewURLService(repo interface {
-	Save(string, string) error
+	Save(string, string, *time.Time) error
 	Get(string) (string, error)
-	GetWithClicks(string) (string, int, error)
+	GetWithClicks(string) (string, int, *time.Time, error)
 	IncrementClicks(string)
 	UpdateClicks(string, int)
 }, Cache *redis.Client) *URLService {
 	return &URLService{Repo: repo, Cache: Cache}
-}
-
-func (s *URLService) CreateURL(longURL string) (string, error) {
-	code := generateCode(8)
-
-	err := s.Repo.Save(code, longURL)
-	if err != nil {
-		return "", err
-	}
-
-	return code, nil
 }
 
 func (s *URLService) GetURL(code string) (string, error) {
@@ -64,16 +46,34 @@ func (s *URLService) GetURL(code string) (string, error) {
 	}
 
 	// url, err := s.Repo.Get(code)
-	url, clicks, err := s.Repo.GetWithClicks(code)
+	url, _, expiry, err := s.Repo.GetWithClicks(code)
 	if err != nil {
 		return "", err
 	}
 
+	if expiry != nil && time.Now().UTC().After(*expiry) {
+		return "", errors.New("link expired")
+	}
+
 	// go s.Repo.IncrementClicks(code)
 	ttl := 5 * time.Minute
-	if clicks > 100 {
-		ttl = 1 * time.Hour
+	if expiry != nil {
+		remaining := time.Until(*expiry)
+		log.Printf("URL %s expires in %s\n", code, remaining)
+
+		if remaining <= 0 {
+			return "", errors.New("link expired")
+		}
+
+		if remaining < ttl {
+			ttl = remaining
+		}
 	}
+
+	// if clicks > 100 {
+	// 	ttl = 1 * time.Hour
+	// }
+
 	s.Cache.Set(ctx, key, url, ttl)
 
 	s.Cache.SetArgs(ctx, clickKey, 0, redis.SetArgs{
@@ -95,4 +95,74 @@ func (s *URLService) CheckAlias(code string) (bool, error) {
 	}
 
 	return true, nil // exists - not available
+}
+
+func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time) (string, error) {
+
+	longURL = strings.TrimSpace(longURL)
+	if longURL == "" {
+		return "", errors.New("url is required")
+	}
+
+	if expiry != nil && time.Now().UTC().After(*expiry) {
+		return "", errors.New("expiry must be in future")
+	}
+
+	// custom alias flow
+	if alias != nil && *alias != "" {
+
+		exists, _ := s.Repo.Get(*alias)
+		if exists != "" {
+			return "", errors.New("alias already exists")
+		}
+
+		err := s.Repo.Save(*alias, longURL, expiry)
+		if err != nil {
+			return "", err
+		}
+
+		key := "url:" + *alias
+		if expiry != nil {
+			ttl := time.Until(*expiry)
+			if ttl > 0 {
+				s.Cache.Set(ctx, key, longURL, ttl)
+			}
+		}
+
+		return *alias, nil
+	}
+	// redis counter flow
+	counter, err := s.Cache.Incr(ctx, "global:counter").Result()
+	if err != nil {
+		return "", err
+	}
+
+	code := utils.ToBase62(counter)
+
+	// safety check (rare collision)
+	for {
+		exists, _ := s.Repo.Get(code)
+		if exists == "" {
+			break
+		}
+
+		counter, _ = s.Cache.Incr(ctx, "global:counter").Result()
+		code = utils.ToBase62(counter)
+	}
+
+	err = s.Repo.Save(code, longURL, expiry)
+	if err != nil {
+		return "", err
+	}
+
+	key := "url:" + code
+
+	if expiry != nil {
+		ttl := time.Until(*expiry)
+		if ttl > 0 {
+			s.Cache.Set(ctx, key, longURL, ttl)
+		}
+	}
+
+	return code, nil
 }

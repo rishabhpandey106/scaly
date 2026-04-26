@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,11 +15,9 @@ func NewURLRepo(db *pgxpool.Pool) *URLRepo {
 	return &URLRepo{DB: db}
 }
 
-func (r *URLRepo) Save(shortCode, longURL string) error {
-	_, err := r.DB.Exec(context.Background(),
-		"INSERT INTO urls (short_code, long_url) VALUES ($1, $2)",
-		shortCode, longURL,
-	)
+func (r *URLRepo) Save(code string, url string, expiry *time.Time) error {
+	query := `INSERT INTO urls (short_code, long_url, expiry) VALUES ($1, $2, $3)`
+	_, err := r.DB.Exec(context.Background(), query, code, url, expiry)
 	return err
 }
 
@@ -33,18 +32,19 @@ func (r *URLRepo) Get(shortCode string) (string, error) {
 	return url, err
 }
 
-func (r *URLRepo) GetWithClicks(code string) (string, int, error) {
+func (r *URLRepo) GetWithClicks(code string) (string, int, *time.Time, error) {
 	var url string
 	var clicks int
+	var expiry *time.Time
 
-	query := `SELECT long_url, clicks FROM urls WHERE short_code=$1`
+	query := `SELECT long_url, clicks, expiry FROM urls WHERE short_code=$1`
 
-	err := r.DB.QueryRow(context.Background(), query, code).Scan(&url, &clicks)
+	err := r.DB.QueryRow(context.Background(), query, code).Scan(&url, &clicks, &expiry)
 	if err != nil {
-		return "", 0, err
+		return "", 0, nil, err
 	}
 
-	return url, clicks, nil
+	return url, clicks, expiry, nil
 }
 
 func (r *URLRepo) IncrementClicks(code string) {
