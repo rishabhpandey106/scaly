@@ -21,10 +21,10 @@ func RateLimiter(rdb *redis.Client) fiber.Handler {
 		}
 
 		if count == 1 {
-			rdb.Expire(config.Ctx, key, time.Minute)
+			rdb.Expire(config.Ctx, key, time.Hour)
 		}
 
-		if count > 100 {
+		if count > 10 {
 			return c.Status(429).JSON(fiber.Map{
 				"error": "Too many requests",
 			})
