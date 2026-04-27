@@ -35,10 +35,12 @@ func CreateTable(db *pgxpool.Pool) error {
 		short_code TEXT UNIQUE NOT NULL,
 		long_url TEXT NOT NULL,
 		clicks INT DEFAULT 0,
+		ip_address TEXT,
 		created_at TIMESTAMPTZ DEFAULT NOW(),
 		expiry TIMESTAMPTZ NULL
 	);
-	CREATE INDEX IF NOT EXISTS idx_urls_short_code ON urls(short_code);
+	CREATE INDEX IF NOT EXISTS idx_urls_expiry ON urls(expiry) WHERE expiry IS NOT NULL;
+	CREATE INDEX IF NOT EXISTS idx_urls_ip ON urls(ip_address);
 	`
 	_, err := db.Exec(context.Background(), query)
 	if err != nil {
