@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -32,13 +33,19 @@ func main() {
 	// log.Println("Database ready")
 	redisClient := config.InitRedis(os.Getenv("REDIS_URL"))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	repo := repository.NewURLRepo(db)
 	svc := service.NewURLService(repo, redisClient)
 	h := handler.NewURLHandler(svc)
 
-	worker.StartClickSync(redisClient, repo)
+	worker.StartClickSync(ctx, redisClient, repo)
+	worker.StartExpiryCleanup(ctx, repo)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ProxyHeader: fiber.HeaderXForwardedFor,
+	})
 
 	app.Use(middleware.RateLimiter(redisClient))
 

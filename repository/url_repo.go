@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,9 +16,9 @@ func NewURLRepo(db *pgxpool.Pool) *URLRepo {
 	return &URLRepo{DB: db}
 }
 
-func (r *URLRepo) Save(code string, url string, expiry *time.Time) error {
-	query := `INSERT INTO urls (short_code, long_url, expiry) VALUES ($1, $2, $3)`
-	_, err := r.DB.Exec(context.Background(), query, code, url, expiry)
+func (r *URLRepo) Save(code string, url string, expiry *time.Time, ip string) error {
+	query := `INSERT INTO urls (short_code, long_url, expiry, ip_address) VALUES ($1, $2, $3, $4)`
+	_, err := r.DB.Exec(context.Background(), query, code, url, expiry, ip)
 	return err
 }
 
@@ -55,4 +56,16 @@ func (r *URLRepo) IncrementClicks(code string) {
 func (r *URLRepo) UpdateClicks(code string, clicks int) {
 	query := `UPDATE urls SET clicks = clicks + $1 WHERE short_code=$2`
 	r.DB.Exec(context.Background(), query, clicks, code)
+}
+
+func (r *URLRepo) DeleteExpired() error {
+	query := `DELETE FROM urls WHERE expiry IS NOT NULL AND expiry < NOW()`
+	result, err := r.DB.Exec(context.Background(), query)
+	if err != nil {
+		return err
+	}
+
+	rows := result.RowsAffected()
+	log.Printf("expired urls deleted: %d", rows)
+	return nil
 }

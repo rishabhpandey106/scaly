@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,14 +9,14 @@ import (
 
 type URLHandler struct {
 	Service interface {
-		CreateURL(string, *string, *time.Time) (string, error)
+		CreateURL(string, *string, *time.Time, string) (string, error)
 		GetURL(string) (string, error)
 		CheckAlias(string) (bool, error)
 	}
 }
 
 func NewURLHandler(svc interface {
-	CreateURL(string, *string, *time.Time) (string, error)
+	CreateURL(string, *string, *time.Time, string) (string, error)
 	GetURL(string) (string, error)
 	CheckAlias(string) (bool, error)
 }) *URLHandler {
@@ -29,11 +30,13 @@ func (h *URLHandler) Shorten(c *fiber.Ctx) error {
 		Expiry *time.Time `json:"expiry,omitempty"`
 	}
 
+	ip := c.IP()
+	log.Printf("ip address: %s", ip)
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid JSON"})
 	}
 
-	code, err := h.Service.CreateURL(req.URL, req.Alias, req.Expiry)
+	code, err := h.Service.CreateURL(req.URL, req.Alias, req.Expiry, ip)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

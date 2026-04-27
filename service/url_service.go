@@ -13,7 +13,7 @@ import (
 
 type URLService struct {
 	Repo interface {
-		Save(string, string, *time.Time) error
+		Save(string, string, *time.Time, string) error
 		Get(string) (string, error)
 		GetWithClicks(string) (string, int, *time.Time, error)
 		IncrementClicks(string)
@@ -25,7 +25,7 @@ type URLService struct {
 var ctx = context.Background()
 
 func NewURLService(repo interface {
-	Save(string, string, *time.Time) error
+	Save(string, string, *time.Time, string) error
 	Get(string) (string, error)
 	GetWithClicks(string) (string, int, *time.Time, error)
 	IncrementClicks(string)
@@ -97,7 +97,7 @@ func (s *URLService) CheckAlias(code string) (bool, error) {
 	return true, nil // exists - not available
 }
 
-func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time) (string, error) {
+func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time, ip string) (string, error) {
 
 	longURL = strings.TrimSpace(longURL)
 	if longURL == "" {
@@ -116,7 +116,7 @@ func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time)
 			return "", errors.New("alias already exists")
 		}
 
-		err := s.Repo.Save(*alias, longURL, expiry)
+		err := s.Repo.Save(*alias, longURL, expiry, ip)
 		if err != nil {
 			return "", err
 		}
@@ -150,7 +150,7 @@ func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time)
 		code = utils.ToBase62(counter)
 	}
 
-	err = s.Repo.Save(code, longURL, expiry)
+	err = s.Repo.Save(code, longURL, expiry, ip)
 	if err != nil {
 		return "", err
 	}
