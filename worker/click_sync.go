@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
@@ -12,29 +13,49 @@ type Repo interface {
 	UpdateClicks(code string, clicks int)
 }
 
-func StartClickSync(rdb *redis.Client, repo Repo) {
-
-	ctx := context.Background()
+func StartClickSync(ctx context.Context, rdb *redis.Client, repo Repo) {
+	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
+		defer ticker.Stop()
+
 		for {
-			keys, _ := rdb.Keys(ctx, "url:*:clicks").Result()
+			select {
+			case <-ticker.C:
 
-			for _, key := range keys {
+				iter := rdb.Scan(ctx, 0, "url:*:clicks", 100).Iterator()
 
-				val, _ := rdb.Get(ctx, key).Int()
+				for iter.Next(ctx) {
+					key := iter.Val()
 
-				if val > 0 {
-					parts := strings.Split(key, ":")
-					code := parts[1]
+					val, err := rdb.Get(ctx, key).Int()
+					if err != nil {
+						log.Println("error getting value:", err)
+						continue
+					}
 
-					repo.UpdateClicks(code, val)
+					if val > 0 {
+						parts := strings.Split(key, ":")
+						if len(parts) < 3 {
+							continue
+						}
 
-					rdb.Del(ctx, key)
+						code := parts[1]
+
+						repo.UpdateClicks(code, val)
+
+						rdb.Del(ctx, key)
+					}
 				}
-			}
 
-			time.Sleep(10 * time.Second)
+				if err := iter.Err(); err != nil {
+					log.Println("scan error:", err)
+				}
+
+			case <-ctx.Done():
+				log.Println("click sync stopped")
+				return
+			}
 		}
 	}()
 }
