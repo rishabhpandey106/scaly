@@ -16,9 +16,9 @@ func NewURLRepo(db *pgxpool.Pool) *URLRepo {
 	return &URLRepo{DB: db}
 }
 
-func (r *URLRepo) Save(code string, url string, expiry *time.Time, ip string) error {
-	query := `INSERT INTO urls (short_code, long_url, expiry, ip_address) VALUES ($1, $2, $3, $4)`
-	_, err := r.DB.Exec(context.Background(), query, code, url, expiry, ip)
+func (r *URLRepo) Save(code string, url string, expiry *time.Time, ip string, userID int) error {
+	query := `INSERT INTO urls (short_code, long_url, expiry, ip_address, user_id) VALUES ($1, $2, $3, $4, $5)`
+	_, err := r.DB.Exec(context.Background(), query, code, url, expiry, ip, userID)
 	return err
 }
 
@@ -46,6 +46,34 @@ func (r *URLRepo) GetWithClicks(code string) (string, int, *time.Time, error) {
 	}
 
 	return url, clicks, expiry, nil
+}
+
+func (r *URLRepo) GetUserURLs(userID int) ([]string, error) {
+	var shortCodes []string
+	
+	query := `SELECT short_code FROM urls WHERE user_id = $1`
+	
+	rows, err := r.DB.Query(context.Background(), query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		shortCodes = append(shortCodes, code)
+	}
+	
+	return shortCodes, nil
+}
+
+func (r *URLRepo) DeleteURL(code string, userID int) error {
+	query := `DELETE FROM urls WHERE short_code=$1 AND user_id=$2`
+	_, err := r.DB.Exec(context.Background(), query, code, userID)
+	return err
 }
 
 func (r *URLRepo) IncrementClicks(code string) {

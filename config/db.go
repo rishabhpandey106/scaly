@@ -30,8 +30,16 @@ func ConnectDB(connectionString string) (*pgxpool.Pool, error) {
 
 func CreateTable(db *pgxpool.Pool) error {
 	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		email TEXT UNIQUE NOT NULL,
+		password TEXT NOT NULL,
+		created_at TIMESTAMPTZ DEFAULT NOW()
+	);
+
 	CREATE TABLE IF NOT EXISTS urls (
 		id SERIAL PRIMARY KEY,
+		user_id INTEGER REFERENCES users(id),
 		short_code TEXT UNIQUE NOT NULL,
 		long_url TEXT NOT NULL,
 		clicks INT DEFAULT 0,
@@ -41,6 +49,7 @@ func CreateTable(db *pgxpool.Pool) error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_urls_expiry ON urls(expiry) WHERE expiry IS NOT NULL;
 	CREATE INDEX IF NOT EXISTS idx_urls_ip ON urls(ip_address);
+	CREATE INDEX IF NOT EXISTS idx_urls_user_id ON urls(user_id);
 	`
 	_, err := db.Exec(context.Background(), query)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// future work : implement user-based rate limiting using JWT claims (userID) instead of IP address
 func RateLimiter(rdb *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
@@ -24,7 +25,7 @@ func RateLimiter(rdb *redis.Client) fiber.Handler {
 			rdb.Expire(config.Ctx, key, time.Hour)
 		}
 
-		if count > 10 {
+		if count > 100 {
 			return c.Status(429).JSON(fiber.Map{
 				"error": "Too many requests",
 			})

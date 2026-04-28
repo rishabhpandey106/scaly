@@ -13,11 +13,13 @@ import (
 
 type URLService struct {
 	Repo interface {
-		Save(string, string, *time.Time, string) error
+		Save(string, string, *time.Time, string, int) error
 		Get(string) (string, error)
 		GetWithClicks(string) (string, int, *time.Time, error)
 		IncrementClicks(string)
 		UpdateClicks(string, int)
+		GetUserURLs(int) ([]string, error)
+		DeleteURL(string, int) error
 	}
 	Cache *redis.Client
 }
@@ -25,11 +27,13 @@ type URLService struct {
 var ctx = context.Background()
 
 func NewURLService(repo interface {
-	Save(string, string, *time.Time, string) error
+	Save(string, string, *time.Time, string, int) error
 	Get(string) (string, error)
 	GetWithClicks(string) (string, int, *time.Time, error)
 	IncrementClicks(string)
 	UpdateClicks(string, int)
+	GetUserURLs(int) ([]string, error)
+	DeleteURL(string, int) error
 }, Cache *redis.Client) *URLService {
 	return &URLService{Repo: repo, Cache: Cache}
 }
@@ -97,7 +101,7 @@ func (s *URLService) CheckAlias(code string) (bool, error) {
 	return true, nil // exists - not available
 }
 
-func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time, ip string) (string, error) {
+func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time, ip string, userID int) (string, error) {
 
 	longURL = strings.TrimSpace(longURL)
 	if longURL == "" {
@@ -116,7 +120,7 @@ func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time,
 			return "", errors.New("alias already exists")
 		}
 
-		err := s.Repo.Save(*alias, longURL, expiry, ip)
+		err := s.Repo.Save(*alias, longURL, expiry, ip, userID)
 		if err != nil {
 			return "", err
 		}
@@ -150,7 +154,7 @@ func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time,
 		code = utils.ToBase62(counter)
 	}
 
-	err = s.Repo.Save(code, longURL, expiry, ip)
+	err = s.Repo.Save(code, longURL, expiry, ip, userID)
 	if err != nil {
 		return "", err
 	}
@@ -165,4 +169,12 @@ func (s *URLService) CreateURL(longURL string, alias *string, expiry *time.Time,
 	}
 
 	return code, nil
+}
+
+func (s *URLService) DeleteURL(code string, userID int) error {
+	return s.Repo.DeleteURL(code, userID)
+}
+
+func (s *URLService) GetUserURLs(userID int) ([]string, error) {
+	return s.Repo.GetUserURLs(userID)
 }
