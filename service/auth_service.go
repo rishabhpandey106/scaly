@@ -6,17 +6,21 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-
-	"url-shortener/repository"
 )
 
+// UserRepository defines the user persistence operations required by AuthService.
+type UserRepository interface {
+	Create(email, hashedPassword string) (int, error)
+	GetByEmail(email string) (int, string, error)
+}
+
 type AuthService struct {
-	userRepo    *repository.UserRepo
+	userRepo    UserRepository
 	jwtSecret   []byte
 	tokenExpiry time.Duration
 }
 
-func NewAuthService(userRepo *repository.UserRepo, jwtSecret string, tokenExpiry time.Duration) *AuthService {
+func NewAuthService(userRepo UserRepository, jwtSecret string, tokenExpiry time.Duration) *AuthService {
 	return &AuthService{
 		userRepo:    userRepo,
 		jwtSecret:   []byte(jwtSecret),
