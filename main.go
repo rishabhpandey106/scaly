@@ -59,14 +59,15 @@ func main() {
 	app.Use(middleware.RateLimiter(redisClient))
 	app.Use(logger.New())
 
-	// auth := app.Group("/auth")
-	app.Post("/auth/signup", authHandler.Signup)
-	app.Post("/auth/login", authHandler.Login)
-	app.Post("/auth/logout", authHandler.Logout)
+	auth := app.Group("/auth")
+	auth.Post("/signup", authHandler.Signup)
+	auth.Post("/login", authHandler.Login)
+	auth.Post("/logout", authHandler.Logout)
+
+	app.Get("/:code", urlHandler.Redirect)
 
 	protected := app.Group("/", middleware.AuthMiddleware(authSvc))
 	protected.Post("/shorten", urlHandler.Shorten)
-	protected.Get("/:code", urlHandler.Redirect)
 	protected.Get("/alias/check/:code", urlHandler.CheckAlias)
 	protected.Get("/user/urls", urlHandler.GetUserURLs)
 	protected.Delete("/:code", urlHandler.DeleteURL)
