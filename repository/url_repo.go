@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -50,15 +49,15 @@ func (r *URLRepo) GetWithClicks(code string) (string, int, *time.Time, error) {
 
 func (r *URLRepo) GetUserURLs(userID int) ([]string, error) {
 	var shortCodes []string
-	
+
 	query := `SELECT short_code FROM urls WHERE user_id = $1`
-	
+
 	rows, err := r.DB.Query(context.Background(), query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var code string
 		if err := rows.Scan(&code); err != nil {
@@ -66,7 +65,7 @@ func (r *URLRepo) GetUserURLs(userID int) ([]string, error) {
 		}
 		shortCodes = append(shortCodes, code)
 	}
-	
+
 	return shortCodes, nil
 }
 
@@ -88,12 +87,12 @@ func (r *URLRepo) UpdateClicks(code string, clicks int) {
 
 func (r *URLRepo) DeleteExpired() error {
 	query := `DELETE FROM urls WHERE expiry IS NOT NULL AND expiry < NOW()`
-	result, err := r.DB.Exec(context.Background(), query)
+	_, err := r.DB.Exec(context.Background(), query)
 	if err != nil {
 		return err
 	}
 
-	rows := result.RowsAffected()
-	log.Printf("expired urls deleted: %d", rows)
+	// rows := result.RowsAffected()
+	// log.Printf("expired urls deleted: %d", rows)
 	return nil
 }

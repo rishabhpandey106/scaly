@@ -56,7 +56,6 @@ func main() {
 		ProxyHeader: fiber.HeaderXForwardedFor,
 	})
 
-	app.Use(middleware.RateLimiter(redisClient))
 	app.Use(logger.New())
 
 	auth := app.Group("/auth")
@@ -64,9 +63,9 @@ func main() {
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/logout", authHandler.Logout)
 
-	app.Get("/:code", urlHandler.Redirect)
+	app.Get("/:code", middleware.RateLimiter(redisClient), urlHandler.Redirect)
 
-	protected := app.Group("/", middleware.AuthMiddleware(authSvc))
+	protected := app.Group("/api/v1", middleware.AuthMiddleware(authSvc), middleware.RateLimiter(redisClient))
 	protected.Post("/shorten", urlHandler.Shorten)
 	protected.Get("/alias/check/:code", urlHandler.CheckAlias)
 	protected.Get("/user/urls", urlHandler.GetUserURLs)

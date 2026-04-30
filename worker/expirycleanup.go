@@ -19,16 +19,16 @@ func StartExpiryCleanup(ctx context.Context, repo ExpiryRepo) {
 		for {
 			select {
 			case <-ticker.C:
-				log.Println("running expiry cleanup...")
+				// log.Println("running expiry cleanup...")
 
 				if err := repo.DeleteExpired(); err != nil {
 					log.Println("cleanup error:", err)
 				} else {
-					log.Println("expired URLs cleaned")
+					// log.Println("expired URLs cleaned")
 				}
 
 			case <-ctx.Done():
-				log.Println("expiry cleanup stopped")
+				// log.Println("expiry cleanup stopped")
 				return
 			}
 		}
