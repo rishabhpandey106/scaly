@@ -44,10 +44,12 @@ func main() {
 	// init service
 	urlSvc := service.NewURLService(urlRepo, redisClient)
 	authSvc := service.NewAuthService(userRepo, os.Getenv("JWT_SECRET"), 24*time.Hour)
+	qrsvc := service.NewQRService()
 
 	// init handler
 	urlHandler := handler.NewURLHandler(urlSvc)
 	authHandler := handler.NewAuthHandler(authSvc)
+	qrHandler := handler.NewQRHandler(urlSvc, qrsvc)
 
 	worker.StartClickSync(ctx, redisClient, urlRepo)
 	worker.StartExpiryCleanup(ctx, urlRepo)
@@ -70,6 +72,7 @@ func main() {
 	protected.Get("/alias/check/:code", urlHandler.CheckAlias)
 	protected.Get("/user/urls", urlHandler.GetUserURLs)
 	protected.Delete("/:code", urlHandler.DeleteURL)
+	protected.Post("/qr", qrHandler.GenerateQR)
 
 	log.Fatal(app.Listen(":8000"))
 }

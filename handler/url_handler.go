@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -40,7 +39,7 @@ func (h *URLHandler) Shorten(c *fiber.Ctx) error {
 	}
 
 	ip := c.IP()
-	log.Printf("ip address: %s", ip)
+	// log.Printf("ip address: %s", ip)
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid JSON"})
 	}
