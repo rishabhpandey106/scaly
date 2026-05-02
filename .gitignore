@@ -1,7 +1,6 @@
 .env
 auth.go
 IMPLEMENTATION_SUMMARY.md
-TEST_CASES.md
 scaly.exe
 scaly-linux
 scaly-mac
